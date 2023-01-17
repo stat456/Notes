@@ -1,0 +1,95 @@
+---
+title: "STAT 491 - Lecture 1"
+date: January 11, 2018
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Bayesian Thought Experiment
+
+There are two foundational elements in a Bayesian Analysis:
+
+1. Bayesian inference is a re-allocation of credibility across possibilities
+2. These possibilities are parameter values in meaningful mathematical models
+
+### Guess Who Exercise
+Consider the game Guess Who, where the goal is to ask questions to identify an opposing player's character.
+
+![Guess Who Faces](images/guesswho.jpg)
+
+\pagebreak
+
+Given the line up of suspects above, construct a set of probabilities for each character. Note these should sum to one and constitute the first foundation element in Bayesian Analysis. The first set of probabilities are known as *prior* probabilities.
+
+```{r echo=FALSE}
+players <- c('Megan','Donna','Clark','Ally','Grace','Wyatt')
+label <- 1:6
+prob <- rep(1/6,6)
+plot(label,prob, type='n', axes=F, ylab='Probability', xlab='Character')
+box()
+axis(1, labels = players, at = 1:6)
+```
+
+Formally these probabilities are parameter values in a multinomial model with one selection or object. The mathematical notation associated with this is known as a probability mass function (more details in a few weeks). 
+
+> Follow the conversation and update your probabilities accordingly
+
+> - **You**: Does your character have a hat
+> - **Your adversary**: Yes
+
+```{r echo=FALSE}
+players <- c('Megan','Donna','Clark','Ally','Grace','Wyatt')
+label <- 1:6
+prob <- rep(1/6,6)
+plot(label,prob, type='n', axes=F, ylab='Probability', xlab='Character')
+box()
+axis(1, labels = players, at = 1:6)
+```
+
+\newpage
+
+> Follow the conversation and update your probabilities accordingly, again
+
+> - **You**: Is your character wearing glasses
+> - **Your adversary**: Yes
+
+```{r echo=FALSE}
+players <- c('Megan','Donna','Clark','Ally','Grace','Wyatt')
+label <- 1:6
+prob <- rep(1/6,6)
+plot(label,prob, type='n', axes=F, ylab='Probability', xlab='Character')
+box()
+axis(1, labels = players, at = 1:6)
+```
+
+> Follow the conversation and update your probabilities accordingly, again
+
+> - **You**: Is your character wearing purple glasses
+> - **Your adversary**: No
+
+```{r echo=FALSE}
+players <- c('Megan','Donna','Clark','Ally','Grace','Wyatt')
+label <- 1:6
+prob <- rep(1/6,6)
+plot(label,prob, type='n', axes=F, ylab='Probability', xlab='Character')
+box()
+axis(1, labels = players, at = 1:6)
+```
+
+\newpage
+
+### Key Points From This Exercise
+
+- *Thinking with distributions:*
+ \vfill
+
+- *Specifying a prior distribution:*
+\vfill
+
+- *Update distribution with additional data or evidence:*
+\vfill
+
+
