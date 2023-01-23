@@ -1,0 +1,227 @@
+---
+title: "STAT 491 - Lecture 2"
+date: January 16, 2018
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+set.seed(01162018)
+```
+
+# Ch.2 Introduction: Credibility, Models, and Parameters
+
+## Reallocation of probabilities
+Recall the Guess Who setting, where the goal was to identify the opponents character. 
+```{r, out.width = "200px", echo=F, fig.align='center'}
+knitr::include_graphics("images/guesswho.jpg")
+```
+
+In this setting, after determining that the character wore a hat and non-purple glasses we ended up with the following probability.
+```{r echo=FALSE, out.width="200px", fig.align='center'}
+players <- c('Megan','Donna','Clark','Ally','Grace','Wyatt')
+label <- 1:6
+prob <- c(0,1,0,0,0,0)
+plot(label,prob, type='h', axes=F, ylab='Probability', xlab='Character', ylim=c(0,1), lwd=8)
+box()
+axis(1, labels = players, at = 1:6)
+axis(2)
+```
+
+In this situation we were able to deduce that Donna was our opponents character. 
+
+### Ex. Rolling a Die
+Now consider a similar example using a die. Suppose our goal is to determine the probability of the die landing on 6. Now constuct your prior belief for this die. 
+
+Note this is different from the previous example. 
+
+- \vfill
+
+- \vfill
+
+\newpage
+
+```{r echo=FALSE, out.width='200px', fig.align='center'}
+label <- 1:6
+prob <- c(0,1/2,0,1/2,0,0)
+plot(label,prob, type='n', axes=F, ylab='', xlab='Probability of Rolling a 6', ylim=c(0,1), lwd=8)
+box()
+axis(1, labels = c(0,.25,.50,.75,1), at = seq(1,6,length.out=5))
+```
+ \vfill
+ 
+#### Data are noisy and inferences are probabilistic
+
+Suppose we observe three rolls, now update your beliefs.
+
+```{r echo=FALSE, out.width='200px', fig.align='center'}
+label <- 1:6
+prob <- c(0,1/2,0,1/2,0,0)
+plot(label,prob, type='n', axes=F, ylab='', xlab='Probability of Rolling a 6', ylim=c(0,1), lwd=8)
+box()
+axis(1, labels = c(0,.25,.50,.75,1), at = seq(1,6,length.out=5))
+```
+\vfill
+Finally suppose we observe 100 more rolls, now update your beliefs.
+
+```{r echo=FALSE, out.width='200px', fig.align='center'}
+label <- 1:6
+prob <- c(0,1/2,0,1/2,0,0)
+plot(label,prob, type='n', axes=F, ylab='', xlab='Probability of Rolling a 6', ylim=c(0,1), lwd=8)
+box()
+axis(1, labels = c(0,.25,.50,.75,1), at = seq(1,6,length.out=5))
+```
+
+\newpage
+
+## Possibilities are parameter values in descriptive models
+Data resulting from the roll of dice can be characterized by a Multinomial distribution. We can formally characterize this using the probability mass function (pmf) of the random variable (more details in later sections.)
+
+$$Pr[\text{die }= i] \frac{n!}{x_1!x_2!x_3!x_4!x_5!x_6!} p_1^{x_1}\; p_2^{x_2}\; p_3^{x_3}\; p_4^{x_4}\; p_5^{x_5}\; p_6^{x_6},$$
+where $p_i$ is the probability of rolling an $i$, $x_i$ is the total count of $i's$ rolled in $n$ total rolls.
+
+- 
+\vfill
+- 
+\vfill
+- 
+\vfill
+
+Given that our goal is to only estimate, $P[die = 6]$, we can simplify the pmf above and consider only two cases: 6 and not 6. This is known as a binomial random variable and can be written as
+
+\vfill
+
+where $p$ is the probability of rolling a 6 and $x$ is the number of ones rolled out of $n$ total rolls.
+\vfill
+
+**Question:** So, why do we need these mathematical models?  
+  
+\vfill
+
+\newpage
+
+### Mathematical Notation for Coin Flipping Example
+
+Suppose our initial prior is a uniform prior over the range of values from 0 to 1.
+
+```{r echo=FALSE, out.width="200px", fig.align='center'}
+p <- seq(0,1,by = .01) # sequence of probabilities
+# plot uniform distribution
+plot(p,dunif(p),type='l',ylab='density', xlab = 'Prob[die = 6]',ylim=c(0,30), lwd=2)
+abline(v=1/6, col='red', lwd=3)
+
+# ten samples
+ten.samp <- sample(1:6, 10, replace=T)
+```
+
+Now assume we are using a fair die and update the probabilities after the following ten rolls: `r ten.samp`. Our distribution can be updated as
+
+```{r echo=FALSE, out.width="200px", fig.align='center'}
+p <- seq(0,1,by = .01) # sequence of probabilities
+# update parameters of posterior distribution (beta)
+a.new <- sum(ten.samp == 6) + 1
+b.new <- sum(ten.samp != 6) + 1
+#plot posterior
+plot(p,dbeta(p,shape1=a.new,shape2=b.new),type='l',ylab='density', xlab = 'Prob[die = 6]',ylim=c(0,30), lwd=2)
+abline(v=1/6, col='red', lwd=3)
+
+# one hundred samples
+onehundred.samp <- sample(1:6, 100, replace=T)
+```
+
+Now we observe 100 more rolls of the die, which results in `r sum(onehundred.samp == 6)` rolls of 1.
+
+```{r echo=FALSE, out.width="200px", fig.align='center'}
+p <- seq(0,1,by = .01) # sequence of probabilities
+# update parameters of posterior distribution (beta)
+a.new <- sum(ten.samp == 6) + sum(onehundred.samp == 6) + 1
+b.new <- sum(ten.samp != 6) + sum(onehundred.samp != 6) + 1
+#plot posterior
+plot(p,dbeta(p,shape1=a.new,shape2=b.new),ylab='density', xlab = 'Prob[die = 6]',ylim=c(0,30), lwd=2, type='n')
+
+onethousand.samp <- sample(1:6,1000, replace = T)
+```
+
+After 1000 more rolls of the die, which results in `r sum(onethousand.samp == 6)` rolls of 1.
+
+```{r echo=FALSE, out.width="200px", fig.align='center'}
+p <- seq(0,1,by = .01) # sequence of probabilities
+# update parameters of posterior distribution (beta)
+a.new <- sum(ten.samp == 6) + sum(onehundred.samp == 6) + sum(onethousand.samp == 6) + 1
+b.new <- sum(ten.samp != 6) + sum(onehundred.samp != 6) + sum(onethousand.samp != 6) + 1
+#plot posterior
+plot(p,dbeta(p,shape1=a.new,shape2=b.new),ylab='density', xlab = 'Prob[die = 6]',ylim=c(0,30), lwd=2,type='n')
+```
+
+\newpage
+
+### Unfair Coin
+Suppose our initial prior is a uniform prior over the range of values from 0 to 1.
+
+```{r echo=FALSE, out.width="200px", fig.align='center'}
+probs.rigged <- c(.1,.1,.1,.1,.1,.5)
+p <- seq(0,1,by = .01) # sequence of probabilities
+# plot uniform distribution
+plot(p,dunif(p),type='l',ylab='density', xlab = 'Prob[die = 6]',ylim=c(0,30), lwd=2)
+abline(v=1/6, col='red', lwd=3)
+
+# ten samples
+ten.samp <- sample(1:6, 10, replace=T, prob=probs.rigged)
+```
+
+Now assume we are using a fair die and update the probabilities after the following ten rolls: `r ten.samp`. Our distribution can be updated as
+
+```{r echo=FALSE, out.width="200px", fig.align='center'}
+p <- seq(0,1,by = .01) # sequence of probabilities
+# update parameters of posterior distribution (beta)
+a.new <- sum(ten.samp == 6) + 1
+b.new <- sum(ten.samp != 6) + 1
+#plot posterior
+plot(p,dbeta(p,shape1=a.new,shape2=b.new),ylab='density', xlab = 'Prob[die = 6]',ylim=c(0,30), lwd=2, type='n')
+
+
+# one hundred samples
+onehundred.samp <- sample(1:6, 100, replace=T, prob=probs.rigged)
+```
+
+Now we observe 100 more rolls of the die, which results in `r sum(onehundred.samp == 6)` rolls of 1.
+
+```{r echo=FALSE, out.width="200px", fig.align='center'}
+p <- seq(0,1,by = .01) # sequence of probabilities
+# update parameters of posterior distribution (beta)
+a.new <- sum(ten.samp == 6) + sum(onehundred.samp == 6) + 1
+b.new <- sum(ten.samp != 6) + sum(onehundred.samp != 6) + 1
+#plot posterior
+plot(p,dbeta(p,shape1=a.new,shape2=b.new),ylab='density', xlab = 'Prob[die = 6]',ylim=c(0,30), lwd=2, type='n')
+
+
+onethousand.samp <- sample(1:6,1000, replace = T, prob=probs.rigged)
+
+```
+
+After 1000 more rolls of the die, which results in `r sum(onethousand.samp == 6)` rolls of 1.
+
+```{r echo=FALSE, out.width="200px", fig.align='center'}
+p <- seq(0,1,by = .01) # sequence of probabilities
+# update parameters of posterior distribution (beta)
+a.new <- sum(ten.samp == 6) + sum(onehundred.samp == 6) + sum(onethousand.samp == 6) + 1
+b.new <- sum(ten.samp != 6) + sum(onehundred.samp != 6) + sum(onethousand.samp != 6) + 1
+#plot posterior
+plot(p,dbeta(p,shape1=a.new,shape2=b.new),ylab='density', xlab = 'Prob[die = 6]',ylim=c(0,30), lwd=2, type='n')
+
+```
+
+\newpage
+
+## Steps of Bayesian Data Analysis
+
+For a Bayesian analysis we will follow these steps:
+
+1. **Identify the data relevant to the research questions.** What are the measurement scales of the data? Which data variables are to be predicted, and which data variables are supposed to act as predictors?
+\vfill
+2. **Define a descriptive model for the relevant data.** The mathematical form and its parameters should be meaningful and appropriate to the theoretical purposes of the analysis.
+\vfill
+3. **Specify a prior distribution on the parameters.** The prior must pass muster with the audience of the analysis, such as skeptical scientists.
+\vfill
+4.  \vfill
+5.  \vfill
