@@ -1,0 +1,228 @@
+---
+title: "Week 5 Module"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+knitr::opts_chunk$set(echo = TRUE)
+set.seed(01162018)
+```
+
+# Bayes Rule with Parameters and Data 
+
+
+
+Bayesian data analysis refers to a fairly specific application of this Bayes rule where:
+
+\vfill
+
+- there is a statistical model of observed data, conditional on parameter values, $p(\mathcal{D}| \theta)$. We will use $\mathcal{D}$ to represent data and $\theta$ to represent the parameters. (Note the statistical model of observed data exists in a frequentist paradigm as well, as this function is sometimes called a _statistical likelihood_ which is used for Maximum Likelihood Estimation (MLE).)
+
+\vfill
+
+- there exists a **prior** belief on the parameter values, $p(\theta)$, in the form a probability distribution and
+
+\vfill
+
+- Bayes rule is used to convert the prior belief on the parameters *and* the statistical model into a **posterior** belief $p(\theta|\mathcal{Y})$.
+$$p(\theta|\mathcal{Y}) = \frac{p(\mathcal{Y}|\theta)p(\theta)}{p(\mathcal{Y})}$$
+The denominator $p(\mathcal{Y})$ is referred to as the marginal likelihood of the data and is computed as:
+$p(\mathcal{Y}) = \sum_{\theta^{'}} p(\mathcal{Y}|\theta^{'}) p(\theta^{'})$ in the case where the parameters are discrete and $p(\mathcal{Y}) = \int p(\mathcal{Y}|\theta^{'}) p(\theta^{'}) d \theta^{'}$ in the case where the parameters are continuous. The $\theta^{'}$ is used as we enumerate or integrate across all possible values of the parameter values.
+
+\vfill
+
+## Example of Bayesian Analysis on a binary outcome
+Consider estimating the probability that a die will roll a six based on the results from a large number of rolls
+
+\vfill
+
+### Define a descriptive statistical model for the relevant data.
+
+A descriptive model denoted as $p(\mathcal{Y}|\theta)$ is needed for the die rolling experiment.
+
+- what is $\mathcal{Y} = \{y_1, y_2, \dots, y_n\}$?  
+\vfill
+
+- what is $\theta$? 
+\vfill
+
+- what is a descriptive model for $p(\mathcal{Y}|\theta)$,
+  For a single roll of the die, $y_i = 1$ if a 6 is rolled and $y_i=0$ otherwise, use the Bernoulli distribution:
+  $$p(y_i = 1 | \theta ) = \theta^{y_i} (1 - \theta)^{1-y_i}$$
+\vfill
+- By assuming that each die roll is independent, they can be combined as:
+  
+  \begin{eqnarray*}
+    p(\mathcal{Y}|\theta) &=& \prod_i p(y_i|\theta)\\
+    &=& \prod_i \theta^{y_i} (1-\theta)^{1-y_i} \\
+    &=& \theta ^{\sum_i y_i} (1-\theta)^{\sum_i (1-y_i)}\\
+     &=& \theta^{\sum_i y_i} (1-\theta)^{N-\sum_i y_i}\\
+    &=& \theta ^{\#\text{ of heads}} (1 - \theta) ^ {\#\text{ of tails}}
+\end{eqnarray*}
+  
+
+\vfill
+
+With the probability distribution function, or as it is sometimes called the sampling function, the function is about the data $y$ conditioned upon the the parameter(s) $\theta$.
+
+
+Now consider the data value $y$ to be fixed and the function to be a function of the parameter $\theta$. This is known as the *Likelihood Function*, as it provides a measure of how likely a parameter value $\theta$ is conditioned on the data. Points about a likelihood function:
+\vfill
+- in this case, the function is about about a
+\vfill
+- the likelihood is not a probability distribution function - as it does not integrate to one.
+\vfill
+- in classical statistics, this function is maximized 
+\vfill
+For notational purposes, I'll usually denote the likelihood function as $\mathcal{L}(\theta|y)$, but unfortunately it can also be denoted as $p(y|\theta)$.
+
+
+  
+### Specify a prior distribution on the parameters
+
+Here are a couple of reasonable prior distributions on $\theta$, the probability of rolling a 6.
+
+```{r, echo = F}
+par(mfcol=c(1,2))
+x <- seq(0,1,by=.001)
+alpha <- 2; beta <- 10
+max.x <- max(dbeta(x, shape1 = alpha, shape2 = beta))
+plot(x, dbeta(x, shape1 = 1, shape2 = 1), type='l', ylim=c(0,max.x), ylab='', xlab = expression(theta))
+plot(x, dbeta(x, shape1 = alpha, shape2 = beta), type = 'l', ylim=c(0,max.x), ylab='', xlab=expression(theta))
+```
+
+\vfill
+
+Each figure can be formulated in terms of a Beta distribution:
+
+$$p(\theta) = \theta^{\alpha - 1} (1-\theta) ^{\beta -1}  \frac{\Gamma(\alpha) \Gamma(\beta)}{\Gamma(\alpha + \beta)},$$
+for $\theta \in [0,1]$ and 0 otherwise.
+
+\vfill
+
+- The first figure has: $\alpha =1$ and $\beta = 1$, which results in a uniform distribution.
+\vfill
+
+- The second figure has: $\alpha = 2$ and $\beta = 10$.
+\vfill
+
+We will see that:
+
+- $a$ corresponds to
+
+\vfill
+
+- $b$ corresponds to 
+
+\vfill
+
+- $a+b$ corresponds to 
+
+\vfill
+
+- as $a+b$ gets large, the distribution get tighter around 
+
+\vfill
+
+- the larger $a$ relative to $b$ the distribution has more density closer
+
+\vfill
+
+- the larger $b$ relative to $a$ the distribution has more density closer
+
+\vfill
+
+\newpage
+
+- What is $\int \frac{\Gamma(a) \Gamma(b)}{\Gamma(a+b)} \theta^{(a-1)} (1- \theta)^{(b-1)} d\theta$ =
+
+\vfill
+
+- What is $\int \theta^{(a-1)} (1- \theta)^{(b-1)} d\theta$ = 
+
+\vfill 
+
+- What is 
+\begin{eqnarray*}
+\int \theta^{(a-1)} (1-\theta)^{(b-1)} \theta^z (1-\theta)^{(N-z)} d\theta &=& \int 
+\end{eqnarray*}
+\vfill
+
+
+
+
+\vfill
+
+### Use Bayesian inference to re-allocate credibility across parameter values.
+
+Recall the goal of this analysis was to learn about $\theta$ the probability of rolling a six. Specifically, we are interested in the posterior distribution $p(\theta|\mathcal{Y})$.
+
+\vfill
+
+Lets assume a few data collection procedures:
+```{r,echo=F}
+ten.rolls <- 8
+twentyfive.rolls <- 20
+onehundred.rolls <- 85
+```
+
+1. 10 rolls of the die, with `r ten.rolls` 6's
+3. 100 rolls of the die, with `r onehundred.rolls` 6's
+
+\newpage
+With 10 rolls
+```{r, echo=F, fig.width = 10, fig.height=12, fig.align='center'}
+max.x <- max(c(dbeta(x, shape1 = onehundred.rolls, shape2 = 100 - onehundred.rolls),dbeta(x, shape1 = onehundred.rolls + alpha, shape2 = 100 - onehundred.rolls+beta)))
+
+par(mfcol=c(2,3))
+plot(x, dbeta(x, shape1 = 1, shape2 = 1), type='l', ylim=c(0,max.x), ylab='', xlab = expression(theta), main = 'prior')
+plot(x, dbeta(x, shape1 = alpha, shape2 = beta), type = 'l', ylim=c(0,max.x), ylab='', xlab=expression(theta), main = 'prior')
+plot(x, dbeta(x, shape1 = ten.rolls, shape2 = 10 - ten.rolls), type='l', ylim=c(0,max.x), ylab='', xlab = expression(theta), main = 'likelihood')
+plot(x, dbeta(x, shape1 = ten.rolls, shape2 = 10 - ten.rolls), type='l', ylim=c(0,max.x), ylab='', xlab = expression(theta), main = 'likelihood')
+plot(x, dbeta(x, shape1 = ten.rolls + 1, shape2 = 10 - ten.rolls + 1), type='l', ylim=c(0,max.x), ylab='', xlab = expression(theta), main = 'posterior')
+plot(x, dbeta(x, shape1 = ten.rolls + alpha, shape2 = 10 - ten.rolls + beta), type='l', ylim=c(0,max.x), ylab='', xlab = expression(theta), main = 'posterior')
+
+```
+\newpage
+
+Then with 100 rolls
+```{r, echo=F, fig.width = 10, fig.height=12, fig.align='center'}
+max.x <- max(c(dbeta(x, shape1 = onehundred.rolls, shape2 = 100 - onehundred.rolls),dbeta(x, shape1 = onehundred.rolls + alpha, shape2 = 100 - onehundred.rolls+beta)))
+
+par(mfcol=c(2,3))
+plot(x, dbeta(x, shape1 = 1, shape2 = 1), type='l', ylim=c(0,max.x), ylab='', xlab = expression(theta), main = 'prior')
+plot(x, dbeta(x, shape1 = alpha, shape2 = beta), type = 'l', ylim=c(0,max.x), ylab='', xlab=expression(theta), main = 'prior')
+plot(x, dbeta(x, shape1 = onehundred.rolls, shape2 = 100 - onehundred.rolls), type='l', ylim=c(0,max.x), ylab='', xlab = expression(theta), main = 'likelihood')
+plot(x, dbeta(x, shape1 = onehundred.rolls, shape2 = 100 - onehundred.rolls), type='l', ylim=c(0,max.x), ylab='', xlab = expression(theta), main = 'likelihood')
+plot(x, dbeta(x, shape1 = onehundred.rolls + 1, shape2 = 100 - onehundred.rolls + 1), type='l', ylim=c(0,max.x), ylab='', xlab = expression(theta), main = 'posterior')
+plot(x, dbeta(x, shape1 = onehundred.rolls + alpha, shape2 = 100 - onehundred.rolls + beta), type='l', ylim=c(0,max.x), ylab='', xlab = expression(theta), main = 'posterior')
+
+```
+
+
+
+### Posterior Distribution
+The goal of the analysis is to infer $p(\theta|z,N)$, in other words we want to learn about the parameter $\theta$ from a series of $N$ trials with $z$ successes.
+
+Assume we use a Beta(a,b) as a prior distribution on $\theta$.
+
+
+\begin{eqnarray*}
+p(\theta|z,N) &=& \frac{p(z,N|\theta) p(\theta)}{p(z,N)}\\
+ &=& \frac{p(z,N|\theta) p(\theta)}{\int p(z,N|\theta) p(\theta) d\theta}\\
+&=& \frac{\theta^z (1-\theta)^{(N-z)} \times (\Gamma(a)\Gamma(b) / \Gamma(a+b))\theta^{(a-1)} (1-\theta)^{(b-1)}}{\int\theta^z (1-\theta)^{(N-z)} \times (\Gamma(a)\Gamma(b) / \Gamma(a+b))\theta^{(a-1)} (1-\theta)^{(b-1)} d\theta}
+\end{eqnarray*}
+\vfill
+\vfill
+
+#### Posterior is a compromise of likelihood and prior
+For more intuition, consider the posterior mean:
+
+\begin{eqnarray}
+\frac{z+a}{N+a+b}
+\end{eqnarray}
+
+\vfill
+
+The posterior mean is a weighted average of the data mean ($\frac{z}{N}$) and the prior mean ($\frac{a}{a+b}$), where the weights are ($\frac{N}{N+a+b}$) for the data piece and ($\frac{a+b}{N+a+b}$) for the prior.
