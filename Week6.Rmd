@@ -1,0 +1,296 @@
+---
+title: "Week 6 Module"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+library(rjags)
+library(tidyverse)
+knitr::opts_chunk$set(echo = TRUE)
+set.seed(02172023)
+```
+
+## Steps of Bayesian Data Analysis
+
+For a Bayesian analysis we will follow these steps:
+
+1. **Identify the data relevant to the research questions.** What are the measurement scales of the data? Which data variables are to be predicted, and which data variables are supposed to act as predictors?
+\vfill
+2. **Define a descriptive model for the relevant data.** The mathematical form and its parameters should be meaningful and appropriate to the theoretical purposes of the analysis.
+\vfill
+3. **Specify a prior distribution on the parameters.** The prior must pass muster with the audience of the analysis, such as skeptical scientists.
+\vfill
+4. **Use Bayesian inference to re-allocate credibility across parameter values.** Interpret the posterior distribution with respect to theoretically meaningful issues (assuming that the model is a reasonable description of the data; see next step).
+\vfill
+5. **Check that the posterior predictions mimic the data with reasonable accuracy (i.e., conduct a 'posterior predictive check').** If not, then consider a different descriptive model.
+\vfill
+
+
+
+## Example of Bayesian Analysis on a binary outcome
+Consider estimating the probability that a house in Seattle has more than 2 bathrooms.
+\vfill
+
+### 1. Identify relevant data
+
+```{r, message = F}
+seattle <- read_csv('http://www.math.montana.edu/ahoegh/teaching/stat408/datasets/SeattleHousing.csv') %>% 
+  mutate(more_than2baths = bathrooms > 2)
+
+z <- sum(seattle$more_than2baths)
+N <- nrow(seattle)
+```
+
+### 2. Define a descriptive statistical model for the relevant data.
+
+A descriptive model denoted as $p(\mathcal{Y}|\theta)$, where $\mathcal{Y} = \{y_1, y_2, \dots, y_n\}$  the data for binary outcomes of rolling the die such that $y_i = 1$ if a house has more than 2 bathrooms and $y_i = 0$ otherwise.
+\vfill
+Here we use a binomial distribution as the statistical model for our data, which can be written as:
+
+\vfill
+
+
+### 3. Specify a prior distribution on the parameters
+
+Given the probability distribution in part 2, our parameter of interest is $\theta$ (the probability that a house has more than 2 bathrooms). 
+
+
+```{r, echo = F}
+a <- 1
+b <- 1
+```
+\vfill
+
+
+### 4. Use Bayesian inference to re-allocate credibility across parameter values.
+
+We have seen that given binomial data and a beta prior on $\theta$ we have an exact posterior distribution for $\theta$
+
+\vfill
+
+\begin{eqnarray*}
+p(\theta|z,N) &=& \frac{p(z,N|\theta) p(\theta)}{p(z,N)}\\
+ &=& \frac{p(z,N|\theta) p(\theta)}{\int p(z,N|\theta) p(\theta) d\theta}\\
+&=& \frac{\theta^z (1-\theta)^{(N-z)} \times (\Gamma(a)\Gamma(b) / \Gamma(a+b))\theta^{(a-1)} (1-\theta)^{(b-1)}}{\int\theta^z (1-\theta)^{(N-z)} \times (\Gamma(a)\Gamma(b) / \Gamma(a+b))\theta^{(a-1)} (1-\theta)^{(b-1)} d\theta}\\
+&=& \frac{(\Gamma(a)\Gamma(b) / \Gamma(a+b))\theta^{z+a-1} (1-\theta)^{b+N-z-1}}{(\Gamma(a)\Gamma(b) / \Gamma(a+b)) \int \theta^{z+a-1} (1-\theta)^{b+N-z-1} d\theta}\\
+&=& \frac{\theta^{z+a-1} (1-\theta)^{b+N-z-1}}{ \int \theta^{z+a-1} (1-\theta)^{b+N-z-1} d\theta}\\
+&=& \frac{\theta^{z+a-1} (1-\theta)^{b+N-z-1}}{\Gamma(a+b+N)/(\Gamma(a+z) \Gamma(N-z+b))}\\
+&=& \frac{(\Gamma(a+z) \Gamma(N-z+b))\theta^{z+a-1} (1-\theta)^{b+N-z-1}}{\Gamma(a+b+N)}\\
+&\sim& Beta(a+z, b+N-z)
+\end{eqnarray*}
+\vfill
+\vfill
+
+```{r, echo = F}
+theta_seq <- seq(0,1, length.out = 1000)
+tibble(posterior_dens = dbeta(theta_seq, a + z, b + N - z),
+       theta_seq = theta_seq) %>%
+  ggplot(aes(y = posterior_dens, x = theta_seq)) +
+  geom_line() + theme_bw() +
+  ggtitle(expression(paste("Posterior distribution for ", theta))) +
+  ylab('') + xlab(expression(theta)) +
+    labs(caption = paste('Beta(', a + z, ',', b + N -z, ')'))
+```
+
+
+
+
+### 5. Check that the posterior predictions mimic the data with reasonable accuracy (i.e., conduct a 'posterior predictive check').
+
+We will come back to this later in the semester
+
+
+# Approximating a Distribution with a Large Sample
+
+We saw that a beta distribution was a conjugate prior for a sampling model, meaning that the posterior was also a beta distribution. This prior specification allows easy posterior computations because the integration in the denominator of Bayes rule $\int p(y|\theta) p(\theta) d\theta$ can be analytically computed.
+
+In many situations, this type of prior is not available and we need to use other means to understand the posterior distribution $p(\theta|y)$. MCMC is a tool for taking samples from the posterior when $\int p(y|\theta) p(\theta) d\theta$ is messy and $p(\theta|y)$ does not have the form of a known distribution.
+
+Previously we computed the mean and variance of distributions using Monte Carlo techniques. Now consider taking sample to visualize an entire distribution.
+
+```{r, echo=F}
+x <- seq(0,1, by =.01)
+a <- 10
+b <- 27
+par(mfrow=c(2,2))
+x.max <- max(dbeta(x,a,b)) + 1
+plot(x, dbeta(x,a,b), type='l', lwd=2, ylim = c(0, x.max), ylab= '',xlab='',
+     main = paste('Beta(',a,',',b,')'))
+sample.10 <- rbeta(10,a,b)
+hist(sample.10, freq = F,breaks='FD', ylim=c(0,x.max), xlab='',ylab='',
+     main = "Histogram with 10 samples", xlim=c(0,1))
+sample.100 <- rbeta(100,a,b)
+hist(sample.100, freq = F,breaks='FD', ylim=c(0,x.max), xlab='',ylab='',
+     main = "Histogram with 100 samples", xlim=c(0,1))
+sample.1000 <- rbeta(1000,a,b)
+hist(sample.1000, freq = F,breaks='FD', ylim=c(0,x.max), xlab='',ylab='',
+     main = "Histogram with 1000 samples", xlim=c(0,1))
+
+sample.10000 <- rbeta(10000,a,b)
+```
+
+As the sample size gets larger, the histogram representation begins to look more like the true distribution. Additionally the moments of the sampled distribution approach that of the true distribution.
+
+The true mean is $\frac{a}{a+b}$ = `r round(a / (a+b),3)` and quantiles can be computed using `qbeta(.025,a,b)` = `r round(qbeta(.025,a,b),3)` and `qbeta(.975,a,b)` = `r round(qbeta(.975,a,b),3)`
+
+- with 10 samples: the mean is `r round(mean(sample.10),3)` and the quantiles are (`r round(quantile(sample.10, probs=c(.025,.975)),3)`)
+- with 100 samples: the mean is `r round(mean(sample.100),3)` and the quantiles are (`r round(quantile(sample.100, probs=c(.025,.975)),3)`)
+- with 1000 samples: the mean is `r round(mean(sample.1000),3)` and the quantiles are (`r round(quantile(sample.1000, probs=c(.025,.975)),3)`)
+- with 10000 samples: the mean is `r round(mean(sample.10000),3)` and the quantiles are (`r round(quantile(sample.10000, probs=c(.025,.975)),3)`)
+
+```{r, echo = F}
+true_dat <- tibble(posterior_dens = dbeta(theta_seq, a , b ),
+       theta_seq = theta_seq)
+tibble(samples = sample.10000) %>% 
+  ggplot(aes(x = samples)) +
+  geom_density() + theme_bw() +
+  geom_line(data = true_dat, inherit.aes = F, aes(y = posterior_dens, x = theta_seq),
+            linetype = 2, color = 'red') +
+  ylab('') + xlab('')
+```
+
+
+\newpage
+
+# Markov Chain Monte Carlo
+
+For now, I'm going to hide details of the algorithm, but assume it is similar to what we've just done. There is a multipurpose software called JAGS that will allow us to fit Bayesian models in a variety of scenarios.
+
+1. [download JAGS](https://mcmc-jags.sourceforge.io)
+2. install `rjags` and `runjags`
+3. JAGS references:
+  - [https://bookdown.org/kevin_davisross/bayesian-reasoning-and-methods/introduction-to-jags.html](https://bookdown.org/kevin_davisross/bayesian-reasoning-and-methods/introduction-to-jags.html)
+  - [https://people.stat.sc.edu/hansont/stat740/jags_user_manual.pdf](https://people.stat.sc.edu/hansont/stat740/jags_user_manual.pdf)
+
+JAGS code will allow, or force, us to explicitly write out our probability model and prior distributions.
+
+```{r}
+model_string <- "model{
+  # Likelihood
+  z ~ dbinom(theta, N)
+
+  # Prior
+  theta ~ dbeta(alpha, beta)
+  alpha <- 1 # prior successes
+  beta <- 1 # prior failures
+}"
+```
+
+```{r}
+dataList = list(z = z, N = N)
+
+model <- jags.model(file = textConnection(model_string), data = dataList)
+
+update(model, n.iter = 5000) # warmup
+
+
+# take samples
+posterior_sample <- coda.samples(model, 
+                       variable.names = c("theta"),
+                       n.iter = 10000)
+
+summary(posterior_sample)
+```
+
+With the true posterior we get
+
+\vfill
+
+
+## Example of Bayesian Analysis on a continuous outcome
+
+Recall Q3 from Lab 1,
+
+> Now let's consider estimating the temperature at Hyalite Canyon (at the reservoir) at 10 AM on Saturdays in February.
+
+Let's conduct the first 4 steps of the Bayesian analysis
+
+### 1. Identify the data relevant to the research question. 
+
+We have access to historical weather data from a snotel site located near Hyalite Canyon, [https://wcc.sc.egov.usda.gov/nwcc/site?sitenum=754](https://wcc.sc.egov.usda.gov/nwcc/site?sitenum=754). In particular, assume we've scraped data from Feb 15th going back to 1989. These are average temperatures (difference in Max - Min), so might require restating the research question.
+
+```{r}
+feb15_temp <- c(1, -6.3,  27.3, 21.4, -13.2, 27, 8.8, 23.5, 26.6, 16, 22.5, 19.2,
+  18, 26.1, 20.7, 8.4, 2.3, 27.1, 21.9, 16.2, 27.1, 34.5, 13.5, 22.8, 28.2,
+  25, 31.6, 34.2, 12.7, 26.2, 18.3, 19.6, 23.2, 2.3)
+```
+
+
+
+### 2. Identify a descriptive statistical model for the relevant data. Then interpret the statistical parameters in that model.
+
+A normal distribution seems reasonable to use in this case. Temperature can go below zero, so a distribution restricting responses to positive values is not necessary. The normal distribution, commonly expressed through the idea of a bell curve, has two parameters: a mean and variance (or standard deviation). The mean temperature will give us the average temperature and Hyalite in February; whereas, the standard deviation will encode how much variability is present in temperatures.
+
+### 3. Specify a prior distribution for all parameters in the model.
+
+Given that we are using the normal distribution, we need to consider two prior distributions: one for the mean and one for the standard deviation (or variance),
+
+
+```{r}
+temp_seq <- seq(-40,50, length.out = 500)
+tibble(vals = c(dnorm(temp_seq, 10, 10)),
+       temperature = temp_seq) %>%
+  ggplot(aes(x = temperature, y = vals)) +
+  geom_line() + theme_bw() +
+  ggtitle(expression(paste('Prior distribution for mean temperature: N(10,',10^2,')'))) +
+  xlab('mean temperature') + ylab('')
+```
+
+```{r}
+sd_seq <- seq(0,40, length.out = 500)
+tibble(vals = c(dgamma(sd_seq, 5, .5)),
+       temperature = sd_seq) %>%
+  ggplot(aes(x = temperature, y = vals)) +
+  geom_line() + theme_bw() +
+  ggtitle(expression(paste('Prior distribution for mean temperature: Gamma(5, 0.5)'))) +
+  xlab('sd of temperature') + ylab('')
+```
+
+
+### 4. Use Bayesian inference to re-allocate credibility across parameter values.
+
+Unfortunately, the calculus is not as straightforward this time around...
+
+\vfill
+
+\begin{eqnarray*}
+p(\mu, \sigma|\mathcal{Y}) &=& \frac{p(\mathcal{Y}|\mu, \sigma) p(\mu) p(\sigma)}{p(\mathcal{Y})}\\
+&\approx& \frac{N(\mathcal{Y}|\mu,\sigma) N(\mu), Gamma(\sigma)}{\int N(\mathcal{Y}|\mu,\sigma) N(\mu), Gamma(\sigma) d\mu \; d\sigma}\\
+\end{eqnarray*}
+\vfill
+\vfill
+\vfill
+
+
+
+```{r}
+model_normal<- "model{
+  # Likelihood
+  for (i in 1:n){
+    y[i] ~ dnorm(mu, 1/sigma^2) 
+  }
+  
+  # Prior
+  mu ~ dnorm(10, 1/7^2)
+  sigma ~ dgamma(5, .5)
+}"
+```
+
+```{r}
+dataList = list(y = feb15_temp, n = length(feb15_temp))
+
+model <- jags.model(file = textConnection(model_normal), data = dataList)
+
+update(model, n.iter = 5000) # warmup
+
+
+# take samples
+posterior_sample <- coda.samples(model, 
+                       variable.names = c("mu", 'sigma'),
+                       n.iter = 10000)
+
+summary(posterior_sample)
+
+summary(lm(feb15_temp ~ 1))
+```
