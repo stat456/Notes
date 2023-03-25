@@ -1,0 +1,223 @@
+---
+title: "T-tests and comparisons of groups"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+library(rjags)
+library(runjags)
+library(ggplot2)
+library(gridExtra)
+library(tidyverse)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+### Posterior Predictive Distribution
+
+Another valuable tool in Bayesian statistics is the posterior predictive distribution which can be written as:
+
+\vfill
+\vfill
+
+The posterior predictive distribution allows us to test whether our sampling model and observed data are reasonable. We will talk more about this later.
+
+\vfill
+
+The posterior predictive distribution can also be used to make probabilistic statements about the next response, rather than the group mean. In our continuing example, we could calculate the probability of the next observed data point being greater than -0.2.
+
+\vfill
+
+When $p(\theta|y)$ does not have a standard form, 
+
+\vfill
+
+```{r, echo=F, messages=F, results='hide'}
+set.seed(02162018)
+num.obs <- 50
+true.mu <- 0
+true.sigmasq <- 1
+
+y <- rnorm(num.obs, mean = true.mu, sd = sqrt(true.sigmasq))
+M <- 0
+S <- 100
+C <- 100000
+dataList = list(y = y, Ntotal = num.obs, M = M, S = S, C = C)
+modelString = "model {
+  for ( i in 1:Ntotal ) {
+    y[i] ~ dnorm(mu, 1/sigma^2) # sampling model
+  }
+  mu ~ dnorm(M,1/S^2)
+  sigma ~ dunif(0,C)
+} "
+writeLines( modelString, con='NORMmodel.txt')
+initsList <- function(){
+  # function for initializing starting place of theta
+  # RETURNS: list with random start point for theta
+  return(list(mu = rnorm(1, mean = 0, sd = 100), sigma = runif(1,0,1000)))
+}
+jagsModel <- jags.model( file = "NORMmodel.txt", data = dataList, 
+                         inits =initsList, n.chains = 2, n.adapt = 100)
+update(jagsModel, n.iter = 500)
+num.mcmc <- 1000
+codaSamples <- coda.samples( jagsModel, variable.names = c('mu', 'sigma'), n.iter = num.mcmc)
+```
+
+```{r}
+posterior.mu <- codaSamples[[1]][,'mu']
+posterior.sigma <- codaSamples[[1]][,'sigma']
+posterior.pred <- rnorm(num.mcmc, mean = posterior.mu, sd = posterior.sigma)
+prob.greater <- mean(posterior.pred > -0.2)
+```
+
+
+```{r, fig.align='center',fig.width=5, echo=F}
+hist(posterior.pred, main='p(y*|y)', prob=T,
+     xlab=expression(y),breaks='FD')
+abline(v=-0.2,lwd=2, col='red')
+arrows(x0 = -1.5, y0 = 0.3 , x1 = -1, y1 = 0.1 , col='gray', lwd = 2)
+text(x=-1.5, y=.375, paste('Prob in this area \n is ', round(1-prob.greater,3)))
+```
+
+\newpage
+
+## T - distribution
+
+- While the normal distribution is often used for modeling continuous data, an alternative is the t-distribution.  
+\vfill
+
+\vfill
+- the wider tails can be illustrated thinking about the 2.5% quantile in terms of standard deviation for a specified degrees of freedom $\nu$.
+
+    - normal =
+    - t(50) = 
+    - t(40) = 
+    - t(30) = 
+    - t(20) = 
+    - t(10) = 
+    - t(5) = 
+    - t(3) = 
+    - t(1) (Cauchy) = 
+\vfill
+-  When the degrees of freedom gets large, the distribution approaches a normal distribution and when the degrees of freedom approach 1 the distribution becomes a Cauchy distribution
+\newpage
+```{r, warning=F, echo=F, fig.align='center', fig.width=7, fig.height= 8}
+set.seed(03112018)
+normal <- data.frame(rnorm(100000))
+colnames(normal) <- 'vals'
+t20 <- data.frame(rt(100000, df = 20))
+t3 <- data.frame(rt(100000, df = 3))
+t1 <- data.frame(rt(100000, df = 1))
+colnames(normal) <- colnames(t20) <- colnames(t3) <- colnames(t1) <- 'vals'
+
+tibble(vals = c(normal$vals, t20$vals, t3$vals, t1$vals), 
+       dist = rep(c('normal', 't20', 't3', 't1'), each = 100000)) %>%
+  mutate(dist = ordered(dist, levels = c('normal', 't20', 't3', 't1'))) %>%
+  ggplot(aes(x = vals)) +
+  geom_histogram(bins = 100) +
+  facet_grid(dist~.) +
+  xlim(-15,15) +
+  theme_bw()
+
+```
+
+
+## Estimation with Two Groups
+A common use of the t-distribution is to make comparisons between two groups. For instance, we may be interested to determine if the mean height of two groups of OK Cupid users are different.
+
+### An aside on Null Hypothesis Significance Testing (NHST) (Ch. 11)
+
+- What is the purpose of NHST? The goal of NHST is to decide whether a particular value of a parameter can be rejected.
+\vfill
+- For instance, consider estimating whether a die has a fair probability of rolling a 6 ($\theta = 1/6$). 
+
+    - Then if we roll the die several times we'd expect 1/6 of the rolls to return a 6. \vfill
+    - If the actual number is far greater or less than our expectation, we should reject the hypothesis that the die is fair. \vfill
+    - To do this, we compute the exact probabilities of getting all outcomes. From this, we can compute the probability of getting an outcome, under the null hypothesis, as extreme or more than the observed outcome. This probability is known as a p-value.\vfill
+    - The null hypothesis is commonly rejected if the p-value is less than 0.05.
+    \vfill
+- It is important to note that calculating the probability of all outcomes requires both the sampling and testing procedure. 
+\vfill
+- We are not going to get into the details, but section 11.1 in the texbook details a situation where a coin is flipped 24 times and results in 7 heads. The goal is determine if the coin is fair. Depending on the sampling procedure used, the p-value can range from .017 to .103 with this dataset.
+\vfill
+
+Furthermore, The American Statistical Association also released the following 6 principles about p-values:
+
+1. P-values can indicate how 
+
+\vfill
+
+
+2. P-values do not measure the probability that the studied hypothesis is true, 
+
+\vfill
+
+
+3. Scientific conclusions and business or policy decisions should not be based only on whether a p-value passes a specific threshold.
+
+\vfill
+
+4. Proper inference requires full reporting and transparency.
+
+\vfill
+
+5. A p-value, or statistical significance, 
+
+\vfill
+
+6. By itself, a p-value does not provide a good measure of evidence regarding a model or hypothesis.
+
+\vfill
+
+\newpage
+
+### Bayesian Approach to Testing a Point Hypothesis
+
+Consider the die rolling example. What value for ($\theta$) would be says is meaningfully different than $\theta = 1/6$ = `r round(1/6, 3)`? If we are in a high-stakes gambling game, we might want $\theta$ to be accurate up to 0.001%, however, if we are using the dice in a friendly board game then accuracy of 2% might be sufficient.
+
+\vfill
+
+- This range around the specified value is known as the . 
+
+\vfill
+
+- Given a ROPE and a posterior distribution, the parameter value is declared to be not credible, or rejected, if its entire ROPE lies outside of the 95% HDI of the posterior distribution of that parameter. 
+
+\vfill
+
+- A parameter value is declared to be accepted for practical purposes of that value's ROPE completely contains the 95% HDI of the posterior for that parameter. 
+
+\vfill
+
+- When the HDI and ROPE overlap, with the ROPE not completely containing the HDI, then neither of the above rules is satisfied and we withhold a decision.
+
+\vfill
+
+- Note that the NHST regime provides no way to confirm a theory, rather just the ability to reject the null hypothesis.
+
+\vfill
+\newpage
+
+Use the OK Cupid dataset and test the following claim, the mean height OK Cupid respondents reporting their body type as athletic is different than 70.5 inches (this value is arbitrary, but is approximately the mean height of all men in the sample). Interpret the results for each scenario.
+```{r}
+okc <- read.csv('http://www.math.montana.edu/ahoegh/teaching/stat408/datasets/OKCupid_profiles_clean.csv', stringsAsFactors = F)
+
+okc.athletic <- okc %>% filter(body_type == 'athletic')
+```
+
+1. Use `t.test()` with a two-sided procedure. 
+```{r}
+t.test(okc.athletic$height, mu = 70, alternative = 'two.sided')
+```
+
+- Now consider whether there is a significant height difference between  OK Cupid respondents self-reporting their body type as "athletic" and those self-reporting their body type as "fit"
+
+- From the frequentist paradigm, this can be accomplished using the `t.test()` function.
+```{r}
+okc.fit <- okc %>% filter(body_type == 'fit')
+t.test(x= okc.athletic$height, y = okc.fit$height)
+```
+
+- It is important to note there is no analog to ROPE with the t-test. If you have ever heard that statistical significance does not imply practical significance this is why. 
