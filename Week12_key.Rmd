@@ -1,0 +1,187 @@
+---
+title: "Week 12: Bayesian Regression"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+set.seed(03292018)
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(rjags)
+library(rvest)
+```
+
+
+## Generalized Linear Models
+Generalized linear models (GLMs) are a class of techniques that include linear regression, logistic regression, and Poisson regression. There are three defining features for a GLM:
+
+1. A sampling model,
+\vfill
+2. A linear combination of predictors, and
+\vfill
+3. A link function.
+\vfill
+
+### Variable types and sampling models
+
+In a GLM setting there are two sets of variables:
+
+1. *Predicted Variable:* also known as the dependent variable and usually denoted by $y$. The goal of the analysis is to create a model for the predicted variable. 
+\vfill
+2. *Predictor Variable:* also known as the independent variables and are usually denoted by $X$. This set of variables are used to predict the dependent variable.
+\vfill
+
+When constructing a GLM, we need to think about the sampling model, $p(y|X,\theta)$. The sampling model is now conditional on not only the unknown parameters, $\theta$, but also the set of predictor variables, $X$. 
+\vfill
+Consider a set of athletes participating in a mountain bike race. Information about the race could be reported as a time for completing the race, place in the race, or team participating on. These three different results are examples of metric, ordinal, and nominal scales. 
+\vfill
+
+- metric: time for the race is a metric response. Metric data are measured on an interval or ratio scale. A special subset of metric data consists of *count*, or frequency, data. Count data are different from other metric data in that the data are non-negative and not continuous.
+\vfill
+
+- ordinal: the place in the race is an example of an ordinal response. Ordinal data has an ordered structure, but lacks additional information about the differences in each level. For instance, was the difference between first and second place one second or one hour? It is impossible to tell. Another example would be Likert style data.
+\vfill
+
+- nominal: like ordinal data, nominal data is a discrete categorical variable. However, nominal data does not have an inherent ordering. Examples would be team of the mountain biker or hair color.
+\vfill
+
+The variable type of the predicted variable will ultimately have a sampling distribution, but we will talk about this later.
+
+\newpage
+
+### Linear Combinations of Predictors
+The main element of linear modeling is a relationship between predictors and the predicted variable.
+```{r}
+SeattleHousing <- read.csv('http://math.montana.edu/ahoegh/teaching/stat408/datasets/SeattleHousing.csv', stringsAsFactors = F)
+```
+
+Let the predicted, or dependent variable, be the price of the home sale denoted as $y$.
+
+#### Metric Predictors
+- *Linear function of a single metric predictor*: Initially consider a single metric variable as the predictor, say square footage of the home. 
+    - A linear relationship is the element of a linear modeling and carries the assumption that there is a proportional relationship between the dependent and independent variable.
+\vfill
+    - The general mathematical form for a linear function is $y = \beta_0 + \beta_1x$, where $\beta_0$ is an intercept term and $\beta_1$ is the slope parameter. The coefficent $\beta_1$ controls how much y increases based on a one unit increase in x.
+    \vfill
+    - If we plot values y and x we should see a straight line.
+\vfill
+```{r, fig.align='center', fig.width=6, fig.height = 4, echo=F}
+ggplot(aes(y=price, x=sqft_living), data=SeattleHousing) + geom_point() + geom_smooth(method = 'loess', formula = "y~x")+geom_smooth(method = 'lm', col='red', formula = "y~x" ) + ggtitle(label = 'Housing Prices in King County Washington') + ylab('Closing price ($)') + xlab('House size (square feet)')
+```
+    - In this case, the figure suggests that a linear relationship might not be the best representation of the data. So what do we do?? One option is to add polynomial terms of square footage.
+\vfill
+
+\newpage
+- *Additive combination of metric predictors:* often multiple predictors can be used for prediction. Here consider also using bedrooms and bathrooms as predictor variables. Note we can also use a squared term for House size in this same framework. \vfill
+    - Consider predicting, y, with with a generic set of predictors, x, according to $y = \beta_0 + \beta_1 x_1 + \dots + \beta_k x_k.$
+    \vfill
+    - An assumption of this model is that the predictors have an additive relationship, meaning that an increase in one predictor variable will result in the same increase in the predicted variable for any value of the other parameters.
+    \vfill
+    - Non linear effects can be modeled using this framework with a polynomial basis function. For instance consider $price = \beta_0 + \beta_1 x_{sqft} + \beta_2 x_{sqft}^2$.
+    \vfill
+- *Nonadditive combination of metric predictors:* The combined influence of two parameters does not have to be additive. There can be an interaction effect between two parameters. For instance, consider zipcode and square footage relative to price. The additive relationship assumes that each additional foot of space in the house has the same increase in house price for each zipcode. \vfill
+    - A multiplicative combination of predictors captures *interactions* between terms and can be formulated as $y = \beta_0 + \beta_1 x_1 + \beta_2 x_2 +\beta_3 x_1 \times x_2$.
+    \vfill
+    - Higher level interactions will add many parameters to the model and can make interpreting the results difficult.
+
+\newpage
+
+![Multiplicative Interaction](images/interact.png)
+
+#### Nominal Predictors
+Similarly we can consider nominal predictors in a linear model.
+\vfill
+- *Linear model for a single nominal predictor:* In this case the nominal predictor has a step or deflection on the predicted variable. For instance housing prices for Bozeman, Livingston, and Belgrade. If the home is in Bozeman, there will be a higher expected price.  \vfill
+    - Let the levels of the nominal variable be denoted as $\tilde{x} = \{x_{[1]}, \dots, x_{[L]}\}$. With this notation, $x_{[1]} = 1$ if the observation comes from group 1 and 0 otherwise. These variables are known as dummy variable.
+    \vfill
+    - Then $y = \beta_0 + \beta_{[1]} x_{[1]} + \dots \beta_{[L]} x_{[l]}$.
+    \vfill
+    \newpage
+    - Using nominal values in a linear model requires a constraint on the values. Two common options are to set $\beta_0=$, then the $\beta_{[i]}$ values represent group means, say for a zipcode. Another option would be to constrain $\sum_j=1^L \beta_{[L]} = 0$.
+    \vfill
+- *Additive and Nonadditive combinations of mixed-type predictors:* The same principle applies as before when looking at combinations of nominal predictors as well as combinations of nominal and metric predictors. \vfill
+
+
+### Linking combined predictors to predicted data
+- Given a linear combination of predictors, the final step is to map that relationship to the predicted variable.
+\vfill
+- Formally, this mapping using a link function. Let $f()$ be an inverse link function, then $\mu= f(X\beta)$, where $X\beta = \sum x_i \beta_i$ is the the linear combination of predictors and $\mu$ is the central tendency of the predicted variable.
+\vfill
+ - An inverse link function maps the predictors to the same 'space' or support as the predicted variable. \vfill
+ - In a traditional linear model (multiple linear regression), the link function is simply the identify function. That is $f(X\beta) = X\beta$.
+ \vfill
+ - When the predicted variable is a binary outcome, the logistic function is frequently used as the inverse link function and gives name to logistic regression.
+ $$y = logistic(x\beta) = \frac{1}{1 + \exp(-X\beta)}$$
+ \vfill
+- The logit function, $logit(p) = log(\frac{p}{1-p})$ is the link function associated witht he inverse-link logistic function.
+\vfill
+- The logistic function will map $X\beta \in [-\infty,\infty]$ to $\mu \in [0,1]$.
+\vfill
+
+- The link function helps to establish the central tendency of the data, but we still need to account for noisy data. In other words, we will use a probability distribution function to map $\mu$ to the predicted data $y$ as $y \sim pdf(\mu, ..[\text{other parameters}])$.
+
+\newpage
+#### Formal Expression of the GLM
+The GLM can be written as as two equations: 
+
+1. $\mu = f(X\beta)$ and 
+\vfill
+2. $y \sim pdf(\mu, [\text{parameters}])$
+\vfill
+\vfill
+
+- A table below shows  some of the models types that we will explore in this class. 
+\vfill
+
+ y             $y \sim pdf()$                                   $\mu = f(X\beta)$
+-----------   ------------------------------------------------  -----------------------
+Metric          $y \sim N(\mu,\sigma)$                          $\mu = X\beta$
+Dichotomous     $y \sim Bernoulli(\mu)$                         $\mu = logistic(X\beta)$  
+Count           $y \sim Poisson(\mu)$                           $\mu = \exp(XB)$
+------------  ------------------------------------------------  -----------------------
+\vfill
+
+## Metric Predicted Variable with One Metric Predictor
+- Consider predicting a metric variabel with a single metric predictor. 
+\vfill
+
+![Regression Visual](images/regression.png)
+\newpage
+
+
+### Model Formulation for Bayesian Regression
+
+Nothing that we have talked about is inherently Bayesian, but we can formulate this in a similar framework.
+
+1. **Sampling Model:** In the regression setting $y \sim N(X\beta,\sigma^2)$. \vfill
+2. **Priors:** What do we need priors on in this model:
+    - $\beta \sim N(M, S^2)$ \vfill
+    - $\sigma^2 \sim U(0,C)$ \vfill
+3. **Posterior**: The posterior distribution in this case is $p(\beta,\sigma^2|y,X)$. \vfill
+
+- Standardizing the data. It can be a good idea to standardize the data before running MCMC code or even regression in a frequentist setting. Standardizing data means re-scaling the data relative to the mean and standard deviation $z_x = \frac{(x - \mu_x)}{\sigma_x}$, where $\mu_x$ is the mean of x and $\sigma_x$ is the standard deviation of x. \vfill
+- Recall the t-distribution, this can also be used for a regression setting as the sampling model.
+
+\newpage
+
+
+### Reporting a Bayesian analysis
+- This will be important for project summaries, see Chapter 25.2 for additional details.
+
+#### Essential Elements
+1. Motivate the use of Bayesian analysis.
+\vfill
+2. Clearly describe the data structure, the model, and the model's parameters.
+\vfill
+3. Clearly describe and justify the prior.
+\vfill
+4. Report the MCMC details, especially evidence that the chains were converged and of sufficient length.
+\vfill
+5. Interpret the posterior.
+\vfill
+
+#### Other Elements
+1. Robustness of posterior for different priors.
+\vfill
+2. Posterior predictive check.
+\vfill
