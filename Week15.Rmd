@@ -1,0 +1,164 @@
+---
+title: "STAT 491 - Week 15: Hierarchical Modeling"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+library(rjags)
+library(runjags)
+library(tidyverse)
+library(gridExtra)
+set.seed(03232018)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Hierarchical Modeling
+Hierarchical models are mathematical descriptions involving multiple parameters such that the credible values of some parameters meaningfully depend on the values of other parameters. In other words, we can *borrow strength* across variables for improved estimation.
+\vfill
+- The textbook discusses coins minted at the same factory and how a factory may generate head-biased or tail-biased coins. \vfill
+- We will extend the free throw shooting idea from earlier by using free throw shooting for NBA players. 
+\vfill
+
+```{r, echo = F}
+playoff.free.throws <- tibble(
+  player = c('James','Curry','Irving','Durant','Wall','Leonard','Beal','Harden','Love','Horford','Aldridge','Green','Paul','Olynyk','Parker','Favors','Jordan','Oladipo'),
+  position = c('F','G','G','F','G','G','G','G','F','F','F','F','G','F','G','F','F','G'),
+  FTA = c(162,114,84,103,93,102,61,115,75,29,55,67,33,30,14,23,56,6),
+  FTM = c(113,103,76,92,78,95,50,101,63,22,42,46,29,22,14,11,22,6))
+playoff.free.throws <- playoff.free.throws %>% arrange(position, player)
+playoff.free.throws %>% kable()
+```
+\newpage
+
+- Let $\omega$ be a parameter that describes free throw ability for players based on their position and let $\theta$ be a player specific parameter for free throw shooting ability.
+
+\vfill
+
+-Then we are interested in the joint posterior distribution, $p(\theta, \omega|\mathcal{D})$. The joint posterior can be factored as:
+\begin{eqnarray*}
+p(\theta, \omega|\mathcal{D}) &\propto& p(\mathcal{D}|\theta, \omega) \times p(\theta, \omega)\\
+&=& \\
+\end{eqnarray*}
+
+\vfill
+
+- The implication of the refactoring of this equation is that the data depend only on the value of $\theta$ (the player specific free throw shooting percentage). Moreover, $\theta$ depends on $\omega$. Any model that can be factored into a chain of dependencies like this is a *hierarchical model.*
+
+\vfill
+- Practically, the implication of this model is that the estimated free throw shooting percentage of a player depends on their actual shots *and* the results from the other players in the same group.
+\vfill
+- Hierarchical models are also common in educational statistics settings where students are grouped into schools/classrooms. 
+\vfill
+
+### Single Player Model
+First consider modeling the free throw shooting for a single player.
+\vfill
+Let $y_i =1$ if the $i^{th}$ free throw is made and 0 otherwise. 
+\vfill
+\vfill
+
+\newpage
+
+- Now consider a re-parameterization of the beta distribution, where instead of using $a$ and $b$, the distribution is expressed in terms of the mode $\omega$ and a concentration parameter $\kappa$. Formally $\omega = (a-1) \ (a+b-2)$ and $\kappa = a+b$.
+\vfill
+Now we can rewrite the prior as:
+$$\theta \sim Beta(a,b) = Beta(\omega(\kappa - 2) + 1, (1-\omega)(\kappa-2)+1).$$
+\vfill
+- The implication of the previous equation is that the value of $\theta$ now depends on $\omega$ and $\kappa$. The parameter $\theta$ will be near $\omega$ and the concentration around $\omega$ depends on $\kappa$.
+\vfill
+
+- Up to this point, nothing has really changed. We could go ahead and specify values for $\omega$ and $\kappa$ in the same fashion as we have previously with $a$ and $b$. However, rather than directly choosing $\omega$ we are going to consider it to be a parameter and place a prior distribution on it. Specifically let $\omega \sim Beta(a_\omega, b_\omega)$. For now let $\kappa$ be a constant.
+\vfill
+
+-Again, we are interested in the joint posterior distribution, $p(\theta, \omega|\mathcal{D})$. 
+
+- This hierarchical model can also be visualized
+
+![hierarchical model for single player](images/hierarchical.png)
+\newpage
+
+### Multiple Players from Same Position
+
+- Now consider estimating the free throw shooting percentages for $S$ players form the same position. Let $\theta_s$ denote the shooting percentage for the $s^{th}$ player.
+\vfill
+- The notation will change slightly so that $y_{i|s}$ is the $i^{th}$ observation from the $s^{th}$ player, so the sampling model is now $y_{i|s}|\theta_s \sim Bernoulli(\theta_s)$.
+\vfill
+- For each $\theta_s$, we specify $\theta_s \sim beta(\omega(\kappa - 2) + 1, (1-\omega)(\kappa-2)+1)$. It may help to think of these as "latent samples" from this distribution.
+\vfill
+- This results in a set of $S+1$ parameters that we are interested in learning about.
+\begin{eqnarray*}
+p(\theta_1, \dots, \theta_S, \omega|y) &=& \frac{p(y|\theta_1, \dots, \theta_S, \omega) \times p(\theta_1, \dots, \theta_S| \omega) \times p(\omega)}{p(y)}
+\end{eqnarray*}
+\vfill
+- Now we are also going to place a prior on $\kappa$, the concentration parameter. We have the constraint that $\kappa -2$ must be non-negative. So consider $\kappa \sim Gamma_+(S_\kappa, R_\kappa)$, where $Gamma_+()$ is a shifted gamma distribution. So we have
+\begin{eqnarray*}
+p(\theta_1, \dots, \theta_S, \kappa, \omega|y) &=& \frac{p(y|\theta_1, \dots, \theta_S, \kappa, \omega) \times p(\theta_1, \dots, \theta_S|\kappa, \omega) \times p(\omega) \times p(\kappa)}{p(y)}
+\end{eqnarray*}
+\newpage
+- This model can also be visualized:  
+
+![hierarchical model with for multiple players](images/hierarchical2.png)
+
+#### JAGS Code for Hierarchical Model
+```{r}
+# Data
+guards <- playoff.free.throws %>% filter(position == 'G')
+Nsubj <- nrow(guards)
+dataList = list(z=guards$FTM, N=guards$FTA,Nsubj = Nsubj)
+
+# Model - see page 250 in text
+modelString <- 'model {
+  for ( s in 1:Nsubj ) {
+    z[s] ~ dbin( theta[s], N[s] )
+    theta[s] ~ dbeta( omega*(kappa-2)+1, (1-omega)*(kappa-2)+1)
+  }
+  omega ~ dbeta(1, 1)
+  kappa <- kappaMinusTwo + 2
+  kappaMinusTwo ~ dgamma(.01, .01)
+}'
+writeLines( modelString, con='HierModel.txt')
+
+
+# RUN JAGS
+jags.hier <- jags.model( file = "HierModel.txt", data = dataList, n.chains = 3, n.adapt = 100000)
+update(jags.hier, 10000)
+
+num.mcmc <- 5000
+codaSamples <- coda.samples( jags.hier, variable.names = c('omega', 'kappa','theta'), n.iter = num.mcmc)
+#par(mfrow=c(3,4))
+#traceplot(codaSamples)
+guards <- guards %>% mutate(FT.PCT  = FTM / FTA)
+HPDinterval(codaSamples)[[1]][2,]
+mean(codaSamples[[1]][,2])
+```
+
+```{r, echo = F}
+cbind(guards,
+      post.mean = colMeans(codaSamples[[1]][,-c(1:2)]),
+      HPDinterval(codaSamples)[[1]][-c(1:2),]) %>% 
+  kable(digits=3)
+```
+
+\newpage
+
+#### Shrinkage in Hierarchical Models
+- One principle in hierarchical models is that lower level parameters are pulled closer together based on the higher level parameters. This phenomenon is known as shrinkage, as estimates are pulled closer together. This is also commonly referred to as borrowing strength.
+\vfill
+
+- Shrinkage results because the lower level parameters are influenced by:
+    1. the  \vfill
+    2. \vfill
+
+
+### Multiple Players from Multiple Positions
+
+- Now the hierarchy is extended to another level, where each group will have distinct hierarchical parameters.
+\vfill
+- Essentially, we are modeling that guards and forwards will have different free throw shooting parameters $\omega$ and $\kappa$ that influence overall group level averages.
+\vfill
+- This model can also be visualized:  
+
+![hierarchical model with for multiple players from multiple groups](images/hierMulti.png)
+

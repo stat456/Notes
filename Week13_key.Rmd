@@ -1,0 +1,152 @@
+---
+title: "GLMS: Regression for Binary and Count Data"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+set.seed(04192018)
+knitr::opts_chunk$set(echo = TRUE)
+library(knitr)
+library(runjags)
+library(rjags)
+library(tidyverse)
+```
+
+## Dichotomous Predicted Variable
+- This section focus on dichotomous predicted variables: such as whether a basketball player will get a hit or if a bird will be located in a spatial grid.
+\vfill
+- Traditionally, these types of methods are generally implemented with logistic regression.
+\vfill
+- The model can be written as:
+$$y \sim Bernoulli(\mu)$$
+$$\mu = logistic(\beta_0 + \beta_1 x_1 + \beta_2 x_2)$$
+
+where the logistic function is $logistic(x) = 1 / (1 + exp(-x))$.
+\vfill
+- *Q:* What are the three components of a GLM and what are they in this specific setting?
+    1. Sampling Model: Bernoulli distribution for binary outcome. \vfill
+    2. Linear Combination of Predictors: $\beta_0 + \beta_1 x_1 + \beta_2 x_2$ \vfill
+    3. (inverse) Link function: the logistic function is used to map the predicted variables to $\mu$ the central tendency of the data.
+    
+\vfill
+
+- *Q*: To fit this in a Bayesian framework, we need to specify priors. What parameters require priors and what distributions would be reasonable?
+    - $\beta \sim N(M,S^2)$
+
+\newpage
+
+We will explore the Swiss birds dataset for this lab to construct a logistic regression model for presence of the Willow Tit. 
+
+```{r}
+swiss.birds <- read.csv('http://www.math.montana.edu/ahoegh/teaching/stat491/data/willowtit2013.csv')
+kable(head(swiss.birds))
+```
+
+This dataset contains 242 sites and 6 variables:  
+
+    - siteID, a unique identifier for the site, some were not sampled during this period 
+    - elev, mean elevation of the quadrant in meters 
+    - rlength, the length of the route walked by the birdwatcher, in kilometers 
+    - forest, percent forest cover 
+    - birds, binary variable for whether a bird is observed, 1 = yes 
+    - searchDuration, time birdwatcher spent searching the site, in minutes
+    
+#### JAGS Code
+
+```{r}
+model.string <- 'model {
+  for (i in 1:Ntotal) {
+    y[i] ~ dbern(mu[i])
+    mu[i] <- ilogit(beta0 + sum( beta[1:Nx] * x[i,1:Nx] ))
+  }
+
+  beta0 ~ dnorm(0,1/5^2)
+  for (j in 1:Nx){
+    beta[j] ~ dnorm(0, 1/5^2)
+  }
+}'
+
+# Fit Model
+jags.logistic <-  jags.model(textConnection(model.string), 
+                  data=list(y=swiss.birds$birds, 
+                            Ntotal=nrow(swiss.birds), 
+                            Nx = 4, 
+                            x= swiss.birds[,c('elev','rlength','forest','searchDuration')]),
+                  n.chains =2, n.adapt = 10000)
+
+update(jags.logistic, 10000)
+samples <- coda.samples(jags.logistic, variable.names = c('beta','beta0'), n.iter = 50000) 
+
+summary(samples)
+
+#summary(glm(birds ~ elev + rlength +forest + searchDuration, family='binomial', data=swiss.birds))
+```
+
+
+
+\newpage
+
+### Interpretation of Logistic Regression Coefficients
+Recall this model can be written as: $logit(\mu) = \beta_0 + \beta_1 x_1 + \dots \beta_p x_p$.
+
+\vfill
+
+- When $x_i$ increases or decreases by 1 unit, then logit($\mu$) increases or decreases by $\beta_i$. 
+
+\vfill
+
+- The logit function for $\mu$ can be expressed as $logit(\mu) = \log(\frac{\mu}{1-\mu})$. 
+
+\vfill
+
+- In this setting, $\mu$ is the probability of y = 1, so $$logit(\mu) = \log(\frac{Pr[y=1]}{1-Pr[y=1]}) = \log(\frac{Pr[y=1]}{Pr[y=0]})$$ 
+
+\vfill
+
+- This ratio: $\frac{Pr[y=1]}{Pr[y=0]}$ is known as the odds, so $logit(\mu)$ is the log-odds of an outcome in favor of 1 rather than 0.
+
+\vfill
+
+- Suppose the logistic regression for the Swiss birds had the following coefficients: $\beta_0 = -6$, $\beta_{elev} = .002$, and $\beta_{forest} = .06$.
+    \vfill
+    - Compute the probability for observing a bird in a quadrant with: elevation = 1500 meters and forest cover of 60 %. $1 / (1 + exp(- (-6 + .002 * 1500 + .06 * 60)))$ = `r 1 / (1 + exp(- (-6 + .002 * 1500 + .06 * 60)))` 
+    
+    \vfill
+    - How do we interpret the meaning for the coefficent $\beta_{forest}$? Each unit increases the log-odds by .06. So for instance, if the forest cover was 70% rather than the 60% above the log-odds of observing a bird would increase by 0.6. 
+    - The log-odds are different than a probability as in this case (conditional on the elevation) the probability increases to:
+    $1 / (1 + exp(- (-6 + .002 * 1500 + .06 * 70)))$ = `r 1 / (1 + exp(- (-6 + .002 * 1500 + .06 * 70)))` 
+
+\vfill
+
+- Note that an unit increase in the log-odds does not have a unit increase in the probability.
+
+\newpage
+    
+## Count Predicted Variable
+- Now reconsider the willow tit dataset and consider modeling not just the presence / absence of birds, but directly modeling the number of birds observed in each spatial region.
+
+```{r, fig.align='center', fig.width=4, height=3}
+birds <- read.csv('http://math.montana.edu/ahoegh/teaching/stat491/data/willowtit2013_count.csv')
+head(birds)
+ggplot(aes(bird.count), data=birds) + geom_bar() + ylab('Frequency') + xlab('Number of Birds Observed') + 
+  ggtitle('Bird Counts of Willow Tit')
+```
+\vfill
+
+1. Sampling Model: In general the Poisson model will be used as a sampling model for count data:
+    -$y|\mu \sim Poisson(\mu) = \mu^y \exp(-\mu) / y!$. \vfill
+    - the mean and variance of the Poisson distribution are both $\mu$
+    - if this is not a reasonable assumption, the negative binomial distribution can be used
+
+\vfill
+
+2. Linear Combination of Predictors: The same principles apply here as the other GLM settings.
+
+\vfill
+
+3. Link Function: The support for count data is values greater than or equal to zero.
+    -$X\beta = \log(\mu)$, so the inverse-link function is the exponential function. \vfill
+    - $\mu = \exp(X\beta)$.
+    \vfill
+    
+\newpage
