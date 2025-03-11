@@ -50,7 +50,8 @@ DBDA provides a nice intuitive overview of the Metropolis algorithm.
     2. move to the adjacent island to the west, or \vfill
     3. move to the adjacent island to the east. \vfill
 - The politician's goal is to visit all islands proportional to their population, so most time is spent on the most populated islands. Unfortunately his office doesn't know the total population of the island chain. When visiting (or proposing to vist) an island, the politician can ask the local mayor for the population of the island. \vfill
-- The politician has a simple heuristic for deciding whether to travel to a proposed island, by flipping a coin to determine whether to consider traveling east or west. 
+
+- Devise a way for the politician to acheive this goal.
 
 \vfill
 \vfill
@@ -133,7 +134,8 @@ This procedure that we have described is a Markov chain. As such we can consider
 \vfill
 
 \vfill
-We can also think about transition probabilities from state $i$ to state $j$
+We can also think about transition probabilities from state $i$ to state $j$. Create a 5 X 5 table with these probabilities.
+
 \vfill
 
 \newpage
@@ -168,12 +170,14 @@ This procedure also works more generally for:
 - continuous values (consider the probability parameter in occupancy model),
 - any number of dimensions,
 - and more general proposal distributions.
+
+Consider this in the context of a hiker and a mountain - how might this algorithm work?
  
 \newpage
  
 ### Metropolis Sampler for Beta Prior and Bernoulli likelihood
 
-We will soon see learn about JAGS for fitting Bayesian models, but these algorithms can also be written directly in R code.
+We will soon use JAGS for fitting Bayesian models, but these algorithms can also be written directly in R code.
 
 This will be demonstrated on the willow tit dataset and the MCMC results will be compared with the analytical solution. In most cases, analytical 
 solutions for the posterior are not possible and MCMC is typically used to make inferences from the posterior.
